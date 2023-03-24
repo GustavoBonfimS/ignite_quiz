@@ -58,7 +58,12 @@ export function Quiz() {
   const { id } = route.params as Params;
 
   function shakeAnimation() {
-    shake.value = withSequence(withTiming(3), withTiming(0));
+    shake.value = withSequence(withTiming(3), withTiming(0, undefined, (finished) => {
+      'worklet';
+      if (finished) {
+        runOnJS(handleNextQuestion)();
+      }
+    }));
   }
 
   function handleSkipConfirm() {
@@ -99,14 +104,13 @@ export function Quiz() {
     if (quiz.questions[currentQuestion].correct === alternativeSelected) {
       setStatusReply(1);
       setPoints((prevState) => prevState + 1);
+      handleNextQuestion();
     } else {
       setStatusReply(2);
       shakeAnimation();
     }
 
-    setAlternativeSelected(null);
-
-    handleNextQuestion();
+    setAlternativeSelected(null);    
   }
 
   function handleStop() {
@@ -240,6 +244,7 @@ export function Quiz() {
               question={quiz.questions[currentQuestion]}
               alternativeSelected={alternativeSelected}
               setAlternativeSelected={setAlternativeSelected}
+              onUnmount={() => setStatusReply(0)}
             />
           </Animated.View>
         </GestureDetector>
