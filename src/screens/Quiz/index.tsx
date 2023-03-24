@@ -14,6 +14,7 @@ import { Question } from "../../components/Question";
 import { QuizHeader } from "../../components/QuizHeader";
 import { ConfirmButton } from "../../components/ConfirmButton";
 import { OutlineButton } from "../../components/OutlineButton";
+import { OverlayFeedback } from "../../components/OverlayFeedback";
 import Animated, {
   Easing,
   Extrapolate,
@@ -45,6 +46,7 @@ export function Quiz() {
   const [alternativeSelected, setAlternativeSelected] = useState<null | number>(
     null
   );
+  const [statusReply, setStatusReply] = useState(0);
 
   const { navigate } = useNavigation();
 
@@ -95,10 +97,11 @@ export function Quiz() {
     }
 
     if (quiz.questions[currentQuestion].correct === alternativeSelected) {
+      setStatusReply(1);
       setPoints((prevState) => prevState + 1);
     } else {
+      setStatusReply(2);
       shakeAnimation();
-      return;
     }
 
     setAlternativeSelected(null);
@@ -207,6 +210,7 @@ export function Quiz() {
 
   return (
     <View style={styles.container}>
+      <OverlayFeedback status={statusReply} />
       <Animated.View style={fixedProgressBarStyle}>
         <Text style={styles.title}>{quiz.title}</Text>
         <ProgressBar
