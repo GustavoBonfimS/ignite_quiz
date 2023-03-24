@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Alert, Text, View } from "react-native";
 
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -32,6 +33,8 @@ interface Params {
 
 type QuizProps = typeof QUIZ[0];
 
+const CARD_INCLINATION = 10;
+
 export function Quiz() {
   const [points, setPoints] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,6 +48,7 @@ export function Quiz() {
 
   const shake = useSharedValue(0);
   const scrollY = useSharedValue(0);
+  const cardPosition = useSharedValue(0);
 
   const route = useRoute();
   const { id } = route.params as Params;
@@ -116,6 +120,17 @@ export function Quiz() {
     return true;
   }
 
+  const onPan = Gesture.Pan()
+    .onUpdate((event) => {
+      const moveToLeft = event.translationX < 0;
+      if (moveToLeft) {
+        cardPosition.value = event.translationX;
+      }
+    })
+    .onEnd(() => {
+      cardPosition.value = withTiming(0);
+    });
+
   useEffect(() => {
     const quizSelected = QUIZ.filter((item) => item.id === id)[0];
     setQuiz(quizSelected);
@@ -134,28 +149,51 @@ export function Quiz() {
     ],
   }));
 
-  const fixedProgressBarStyle = useAnimatedStyle(() => ({
-    zIndex: 1,
-    position: 'absolute',
-    paddingTop: 50,
-    backgroundColor: THEME.COLORS.GREY_500,
-    width: '110%',
-    left: '-5%',
-    opacity: interpolate(scrollY.value, [50, 90], [0, 1], Extrapolate.CLAMP),
-    transform: [
-      { translateY: interpolate(scrollY.value, [50, 90], [-40, 0 ], Extrapolate.CLAMP) }
-    ]
-  }));
+  const fixedProgressBarStyle = useAnimatedStyle(() => {
+    return {
+      zIndex: 1,
+      position: "absolute",
+      paddingTop: 50,
+      backgroundColor: THEME.COLORS.GREY_500,
+      width: "110%",
+      left: "-5%",
+      opacity: interpolate(scrollY.value, [50, 90], [0, 1], Extrapolate.CLAMP),
+      transform: [
+        {
+          translateY: interpolate(
+            scrollY.value,
+            [50, 90],
+            [-40, 0],
+            Extrapolate.CLAMP
+          ),
+        },
+      ],
+    };
+  });
 
   const headerAnimatedStyles = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [40, 90], [1, 0], Extrapolate.CLAMP)
+    opacity: interpolate(scrollY.value, [40, 90], [1, 0], Extrapolate.CLAMP),
   }));
+
+  const cardAnimatedStyle = useAnimatedStyle(() => {
+    const rotateZ = cardPosition.value / CARD_INCLINATION;
+    return {
+      transform: [
+        {
+          translateX: cardPosition.value,
+        },
+        {
+          rotateZ: `${rotateZ}deg`,
+        },
+      ],
+    };
+  });
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
-    }
-  })
+    },
+  });
 
   if (isLoading) {
     return <Loading />;
@@ -178,21 +216,23 @@ export function Quiz() {
         contentContainerStyle={styles.question}
       >
         <Animated.View style={[styles.header, headerAnimatedStyles]}>
-        <QuizHeader
-          title={quiz.title}
-          currentQuestion={currentQuestion + 1}
-          totalOfQuestions={quiz.questions.length}
-        />
-        </Animated.View>
-
-        <Animated.View style={shakeStyleAnimated}>
-          <Question
-            key={quiz.questions[currentQuestion].title}
-            question={quiz.questions[currentQuestion]}
-            alternativeSelected={alternativeSelected}
-            setAlternativeSelected={setAlternativeSelected}
+          <QuizHeader
+            title={quiz.title}
+            currentQuestion={currentQuestion + 1}
+            totalOfQuestions={quiz.questions.length}
           />
         </Animated.View>
+
+        <GestureDetector gesture={onPan}>
+          <Animated.View style={[shakeStyleAnimated, cardAnimatedStyle]}>
+            <Question
+              key={quiz.questions[currentQuestion].title}
+              question={quiz.questions[currentQuestion]}
+              alternativeSelected={alternativeSelected}
+              setAlternativeSelected={setAlternativeSelected}
+            />
+          </Animated.View>
+        </GestureDetector>
 
         <View style={styles.footer}>
           <OutlineButton title="Parar" onPress={handleStop} />
